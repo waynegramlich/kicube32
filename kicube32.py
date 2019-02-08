@@ -98,7 +98,7 @@ class ChipPin:
 	  * "K" is the electrical kind of the chip pin (e.g. "Power", "I/O", "Input", etc.)
 	  * "S" is the internal signal name for chip pin (e.g. 'UART7_RX', etc.)
 	  * "L" is some additional information about the pin, usually for GPI pins.
-	These values are stuffed into driectly into attributes named *position*, *name*,
+	These values are stuffed into directly into attributes named *position*, *name*,
 	*kind*, *signal*, and *label*.
 
 	In addition, two sort keys are generated to order a list of *ChipPin* objects.
@@ -135,6 +135,10 @@ class ChipPin:
 	    # We have a more standard numerical pin:
 	    assert position.isdigit()
 	    position_key = tuple(position)
+
+	if trimmed_name in ("PA7", "PA15", "PA14"):
+	    print("name='{0}' trimmed_name='{1}' position='{2}'".
+	      format(name, trimmed_name, position))
 
 	# Figure out which ...
 	asterisk_appended = False
@@ -279,6 +283,10 @@ class ChipPin:
 	if '[' in label and not asterisk_appended:
 	    name += "*"
 
+	if trimmed_name in ("PA7", "PA15", "PA14"):
+	    print("name='{0}' trimmed_name='{1}' position='{2}'".
+	      format(name, trimmed_name, position))
+
 	# Stuff everything into *chip_pin* (i.e. *self*):
 	chip_pin = self
 	chip_pin.position = position
@@ -398,7 +406,7 @@ class KiCube:
 	    for line in lines[1:]:
 		chip_pin = ChipPin(line)
 		chip_pins.append(chip_pin)
-		#print("{0}".format(chip_pin))
+		print("{0}".format(chip_pin))
 
 	kicube = self
 
@@ -482,11 +490,7 @@ class KiCube:
 	# Read *lib_file_name* in:
 	schematic_library = SchematicLibrary(lib_file_name)
 	cpu_symbol = schematic_library.lookup(kicad_part_name)
-	print("before fixup")
-	print('\n'.join(cpu_symbol.lines[0:25]))
 	cpu_symbol.fixup()
-	print("after fixup")
-	print('\n'.join(cpu_symbol.lines[0:25]))
 	output_library.insert(cpu_symbol)
 
     def nucleo144_bindings_generate(self, processor):
@@ -585,7 +589,7 @@ class KiCube:
 	      (711, "NC2", ("PF7", "F030R8")),
 	      (713, "PA13"),
 	      (715, "PA14"),
-	      (717, "PA14"),
+	      (717, "PA15"),
 	      (719, "GND"),
 	      (721, "PB7"),
 	      (723, "PC13"),
@@ -624,7 +628,7 @@ class KiCube:
 	      (1009, "GND"),
 	      (1011, "PA5", ("PB13", "F302R8")),
 	      (1013, "PA6", ("PB14", "F302R8")),
-	      (1015, "PB6", ("PB15", "F302R8")),
+	      (1015, "PA7", ("PB15", "F302R8")),
 	      (1017, "PB6"),
 	      (1019, "PC7"),
 	      (1021, "PA9"),
@@ -713,7 +717,7 @@ class SchematicLibrary:
 
 	# Verify argument types:
 	assert isinstance(file_name, str) and file_name.endswith(".lib")
-	print("SchematicLibrary.__init__(*, '{0}')".format(file_name))
+	#print("SchematicLibrary.__init__(*, '{0}')".format(file_name))
 
 	# Start with an empty *symbols_table*:
 	schematic_library = self
@@ -762,7 +766,6 @@ class SchematicLibrary:
     def write(self, lib_file_name):
 	# Verify argument types:
 	assert isinstance(lib_file_name, str)
-
 	print("SchematicLibrary.write('{0}')".format(lib_file_name))
 
 	# Create a sorted list of *symbols*:
@@ -831,7 +834,7 @@ class SchematicSymbol:
 
 	    # Update any *line* that changed:
 	    if initial_line != line:
-		print("'{0}' => '{1}'".format(initial_line, line))
+		#print("'{0}' => '{1}'".format(initial_line, line))
 		lines[line_index] = line
 
     def write(self, schematic_library_output_file):
