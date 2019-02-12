@@ -40,7 +40,12 @@ def main():
 	    if argument_index >= arguments_size:
 		print("No argument after -o on command line")
 		return 1
-	    output_library_file_name = arguments[argument_index]
+
+	    argument = arguments[argument_index]
+	    if not argument.endswith(".lib"):
+		print("-o {0} does not specify a .lib file".format(argument))
+		return 1
+	    output_library_file_name = argument
 	else:
 	    print("Unrecognized command line argument '{0}'".format(argument))
 	    return 1
@@ -76,7 +81,7 @@ def main():
 	# Verify timestamps:
 	if ioc.timestamp >= kicube.timestamp:
 	    print("File '{0}' has changed! Please update file '{1}'!!!".
-	      format(ioc.file_name, kicbube.file_name))
+	      format(ioc.file_name, kicube.file_name))
 	    return 1
 
 	kicube.schematic_generate(output_library)
@@ -120,6 +125,10 @@ class ChipPin:
 	assert len(fields) == 5, "line='{0} fields={1}'".format(line, fields)
 	position, name, kind, signal, label = fields
 
+	# Convert STMCube32 userlabels that start with "_" to a KiCAD negation character:
+        if len(label) >= 1 and label[0] == '_':
+	    label = '~' + label[1:]
+
 	# Compute *trimmed_name* which is *name* with everything after the '/' or '-' removed:
 	slash_index = name.find('/')
 	hypen_index = name.find('-')
@@ -136,9 +145,9 @@ class ChipPin:
 	    assert position.isdigit()
 	    position_key = tuple(position)
 
-	if trimmed_name in ("PA7", "PA15", "PA14"):
-	    print("name='{0}' trimmed_name='{1}' position='{2}'".
-	      format(name, trimmed_name, position))
+	#if trimmed_name in ("PA7", "PA15", "PA14"):
+	#    print("name='{0}' trimmed_name='{1}' position='{2}'".
+	#      format(name, trimmed_name, position))
 
 	# Figure out which ...
 	asterisk_appended = False
@@ -157,49 +166,57 @@ class ChipPin:
 		unit_sort = "?"
 		print("Unknown I/O name '{0}' (trimmed_name = '{1}')".format(name, trimmed_name))
 
+	    # Set *style* to be either a regular line or an inverted line:
 	    style = "line"
+	    if len(label) >= 1 and label[0] == '~':
+		style = "inverted"
+
 	    if signal == "":
 		# Unused:	
 		kicad_type = "no_connect"
 	    elif signal.startswith("ETH_"):
 		kicad_type = "bidirectional"
 		name += "({0})".format(signal)
-	    elif signal.startswith("GPIO_"):
-		if signal.endswith("_Input"):
-		    kicad_type = "input"
-		    if label == "":
-			tag = "GPIN"
-		    elif label.startswith("USB_OverCurrent"):
-			tag = "USB_OVER_CURRENT"
-                    elif '[' in label:
-			print("Unhandled Input label '{0}'".format(label))
-			tag = label
+	    elif signal.startswith("GPIO_EXT"):
+		# External interrupt:
+		#print("External interrupt signal='{0}'".format(signal))
+		kicad_type = "input"
+		if label == "":
+		    tag = signal[5:]
+		else:
+                    tag = label
+		#print("tag='{0}".format(tag))
+		name += "({0})".format(tag)
+	    elif signal.startswith("GPIO_Input"):
+		kicad_type = "input"
+		if label == "":
+		    tag = "GPIN"
+		elif label.startswith("USB_OverCurrent"):
+		    tag = "USB_OVER_CURRENT"
+                elif '[' in label:
+		    print("Unhandled Input label '{0}'".format(label))
+		    tag = label
+		else:
+		    tag = label
+		name += "({0})".format(tag)
+	    elif signal.startswith("GPIO_Output"):
+		kicad_type = "output"
+		if label == "":
+		    tag = "GPOUT"
+		elif label.startswith("USB_PowerSwitchOn"):
+		    tag = "USB_POWER_ON"
+		elif '[' in label:
+		    if label.startswith("LD"):
+			bracket_index = label.find('[')
+			tag = "NUCELO_{0}_LED".format(label[bracket_index+1:-1].upper())
 		    else:
+			print("Unhandled Output label '{0}'".format(label))
 			tag = label
-		elif signal.endswith("_Output"):
-		    kicad_type = "output"
-		    if label == "":
-			tag = "GPOUT"
-		    elif label.startswith("USB_PowerSwitchOn"):
-			tag = "USB_POWER_ON"
-		    elif '[' in label:
-			if label.startswith("LD"):
-			    bracket_index = label.find('[')
-			    tag = "NUCELO_{0}_LED".format(label[bracket_index+1:-1].upper())
-			else:
-			    print("Unhandled Output label '{0}'".format(label))
-			    tag = label
-		    else:
-			tag = label
-		elif len(signal) >= 7 and signal[-7:-2] == "_EXTI":
-		    # External interrupt:
-		    kicad_type = "input"
-		    tag = signal[-6:-1]
-		    #print("tag='{0}".format(tag))
 		else:
 		    #print("signal[-7:-2]='{0}'".format(signal[-7:-2]))
-		    print("Unrecognized GPIO signal: '{0}'".format(signal))
-		    tag = "?"
+		    #print("Unrecognized GPIO signal: '{0}'".format(signal))
+		    tag = label
+		#print("trimmed_name:'{0}' label:'{1}' tag:'{2}'".format(trimmed_name, label, tag))
 		name += "({0})".format(tag)
 	    elif signal.startswith("I2C"):
 		# I2C signal:
@@ -283,9 +300,9 @@ class ChipPin:
 	if '[' in label and not asterisk_appended:
 	    name += "*"
 
-	if trimmed_name in ("PA7", "PA15", "PA14"):
-	    print("name='{0}' trimmed_name='{1}' position='{2}'".
-	      format(name, trimmed_name, position))
+	#if trimmed_name in ("PA7", "PA15", "PA14"):
+	#    print("name='{0}' trimmed_name='{1}' position='{2}'".
+	#      format(name, trimmed_name, position))
 
 	# Stuff everything into *chip_pin* (i.e. *self*):
 	chip_pin = self
@@ -406,7 +423,7 @@ class KiCube:
 	    for line in lines[1:]:
 		chip_pin = ChipPin(line)
 		chip_pins.append(chip_pin)
-		print("{0}".format(chip_pin))
+		#print("{0}".format(chip_pin))
 
 	kicube = self
 
@@ -460,7 +477,7 @@ class KiCube:
 	nucleo_chip_pins.sort( key=lambda chip_pin: (chip_pin.unit, chip_pin.unit_sort) )
 
 	kicad_part_name = (kicube.base_name + ';' + kicube.footprint).upper()
-	print("kicad_part_name='{0}'".format(kicad_part_name))
+	#print("kicad_part_name='{0}'".format(kicad_part_name))
 
 	lines = list()
 	lines.append("{0}\n".format(kicad_part_name))
@@ -766,7 +783,7 @@ class SchematicLibrary:
     def write(self, lib_file_name):
 	# Verify argument types:
 	assert isinstance(lib_file_name, str)
-	print("SchematicLibrary.write('{0}')".format(lib_file_name))
+	#print("SchematicLibrary.write('{0}')".format(lib_file_name))
 
 	# Create a sorted list of *symbols*:
 	schematic_library = self
