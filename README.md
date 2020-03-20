@@ -20,18 +20,50 @@ or
         pip install kipart
 
 
-In addition, you will need to install the *STMCubeMX* program:
+In addition, you will need to install the *STMCubeMX* program.  Visit the
+follow URL (until it gets changed):
 
         https://www.st.com/en/development-tools/stm32cubemx.html
 
 The web site is really annoying and will ask for an E-mail address before
-it will letting you get the the software.
+it will letting you get the the software.  Prod the web site until it E-mails
+you a URL for downloading the code.
+
+For now, you will a `.zip` file of the form `en.stm32cubemx_v5-6-0.zip.`  It is
+recommended that create a directory of the name `stm32cubemx-5.6.0` adjusting the
+version number as appropriate.  Go into the directory and unzip the `.zip` file.
+There is a` `.html` file in the directory called `Readme.html` that provides some
+installation documentation.  It can be browsed with your Web brower with a
+URL that looks sort of like `file:///home/.../stm32cubmx-5.6.0/Readme.html`
+where the `...` and version number needs top properly specified.  Follow the
+directions.  For Linux, (you are on your own for Window and MacOS):
+
+        chmod +x SetupSTMCubeMX-5.6.0.linux
+	sudo ./SetupSTMCubeMX-5.6.0.linux
+
+Click through the installation windows.  Eventually an excutable is installed
+somewhere.  For Linux, the executable landed in
+`/usr/local/STMicroelectronics/STM32Cube/STM32CubeMX/STM32CubeMX`.
+It probably makes sense to put in a symbolic link to the executable:
+
+        ln -s /usr/local/STMicroelectronics/STM32Cube/STM32CubeMX/STM32CubeMX`
+
+in the directory that needs to uses the code.
+
+There may be some issues with ensuring that Java is installed.  Seach the web to
+figure out how to ensure that you have the correct version of Java installed.
+
+Now you can run the program.:
+
+        STM32CubeMX
+
+The cube data file ends with a `.ioc` suffix.  
 
 ## Usage
 
 The first step is to start software:
 
-        SOMEWHERE/STM32CubeMX
+        ./STM32CubeMX
 
 This is some Java code with the usual Java annoyances.  It is kind of slow and sluggish
 running on Linux.

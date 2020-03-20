@@ -1,0 +1,3 @@
+include bom_manager/bom_pyside2.ui
+include bom_manager/bom_manager.rec
+global-exclude *.py,cover
