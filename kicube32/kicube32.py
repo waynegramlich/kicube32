@@ -2,13 +2,15 @@
 
 # <------------------------------------- 100 characters -----------------------------------------> #
 
+"""kicube32: A program for generating KiCad schematic symbols for STM32 processors."""
+
 # Usage:
 #
-#        kicube32.py -o libary_name.lib ioc_file1.ioc ioc_file2 ...
+#     kicube32.py -o libary_name.lib ioc_file1.ioc ioc_file2 ...
 #
 # The following `sed` command will turn on background highlighting:
 #
-#        sed -i -E 's/S (.*) N/S \1 f N/' cube.lib
+#     sed -i -E 's/S (.*) N/S \1 f N/' cube.lib
 
 from typing import Any, Dict, IO, List, Tuple
 
@@ -18,6 +20,7 @@ import sys
 
 
 def main() -> int:
+    """Parse arguments a execute program."""
     output_library_file_name: str = ""
 
     # Parse the command line *arguments*:
@@ -95,11 +98,10 @@ def main() -> int:
 
 
 class ChipPin:
-    """ *ChipPin*: Represents information about one physical microcontroller pin.
-    """
+    """Represents information about one physical microcontroller pin."""
 
     def __init__(self, line: str) -> None:
-        """ *ChipPin*: Initialize *ChipPin* object (i.e. *self*).
+        """Initialize ChipPin object.
 
         The arguments are:
         * *line* (str): One line from a `.csv` file of the form '"P","N","K","S","L"', where:
@@ -120,7 +122,6 @@ class ChipPin:
         are generated.  Lastly, the overall type of pin is specified by *is_port*, *is_power*,
         and *is_other* attributes, of exactly one is *True* and the other two are *False*.
         """
-
         # Verify argument types:
         assert isinstance(line, str)
         # print("line={0}".format(line))
@@ -333,9 +334,7 @@ class ChipPin:
         self.position_key: Tuple[Any, ...] = position_key
 
     def __format__(self, format: str) -> str:
-        """ *ChipPin*: Format the *ChipPin* object (i.e. *self*.)
-        """
-
+        """Convert the ChipPin object to a string."""
         chip_pin: ChipPin = self
         position: str = chip_pin.position
         name: str = chip_pin.name
@@ -345,12 +344,16 @@ class ChipPin:
         return "{0:4} {1:6} {2:15} {3:20} {4}".format(position, name, kind, signal, label)
 
     def position_set(self, position: str) -> None:
+        """Set the ChipPin position."""
         chip_pin: ChipPin = self
         chip_pin.position = position
 
 
 class IOC:
+    """Represents an STM32CubeMX .ioc file."""
+
     def __init__(self, ioc_file_name: str) -> None:
+        """Read in and process an ioc file."""
         assert ioc_file_name.endswith(".ioc")
         base_name: str = ioc_file_name[:-4]
         timestamp: float = os.path.getmtime(ioc_file_name)
@@ -382,13 +385,10 @@ class IOC:
 
 
 class KiCube:
-    """ *KiCube*: Represents data gleaned from an STM32Cube project.
-    """
+    """KiCube represents data gleaned from an STM32Cube project."""
 
     def __init__(self, base_name: str, mcu_name: str, board_name: str, package: str) -> None:
-        """ *KiCube*: Initialize the *Cube* object (i.e. *self*.)
-        """
-
+        """Initialize a KiCube object."""
         # print("KiCube.__init__(*, '{0}', '{1}', '{2}', '{3}')".
         #  format(base_name, mcu_name, board_name, package))
 
@@ -447,9 +447,7 @@ class KiCube:
         # print("len(kicube.nucleo_bindings)={0}".format(len(kicube.nucleo_bindings)))
 
     def schematic_generate(self, output_library: "SchematicLibrary") -> None:
-        """ *KiCube*:
-        """
-
+        """Generate a schematic."""
         kicube: KiCube = self
         chip_pins: List[ChipPin] = kicube.chip_pins
         nucleo_bindings: List[Tuple[int, str]] = kicube.nucleo_bindings
@@ -519,8 +517,7 @@ class KiCube:
         output_library.insert(cpu_symbol)
 
     def nucleo144_bindings_generate(self, processor: str) -> List[Tuple[int, str]]:
-        # print("KiCube.nucleo144_bindings_generate(*, '{0}')".format(processor))
-
+        """Return list of Nucleo-144 pin bindings."""
         nucleo144_mcus: List[str] = [
           "F207ZG",
           "F303ZE",        # FIXME: This one may be slightly different!!!
@@ -577,7 +574,8 @@ class KiCube:
 
         return nucleo144_bindings
 
-    def nucleo64_bindings_generate(self, processor, pin_selects):
+    def nucleo64_bindings_generate(self, processor: str, pin_selects) -> List[Tuple[int, str]]:
+        """Return the Nucleo64 pin bindings for a proceesor."""
         assert isinstance(processor, str)
         assert isinstance(pin_selects, list)
         # print("KiCube.nucleo64_bindings_generate(*, '{0}", "{1}')".format(processor, pin_selects))
@@ -602,103 +600,103 @@ class KiCube:
           "F410RB": "L410RB"
         }
 
-        nucleo64_bindings = None
+        nucleo64_bindings: List[Tuple[int, str]] = []
+        pin_bindings: List[Tuple[int, str, List[Tuple[str, ...]]]]
         if processor in cpu_mapping:
             pin_bindings = [
-              (701, "PC10"),
-              (703, "PC12"),
-              (705, "VDD"),
-              (707, "BOOT0", ("PH3:BT0", "L452RE")),
-              (709, "NC1", ("PF6", "F030R8")),
-              (711, "NC2", ("PF7", "F030R8")),
-              (713, "PA13"),
-              (715, "PA14"),
-              (717, "PA15"),
-              (719, "GND"),
-              (721, "PB7"),
-              (723, "PC13"),
-              (725, "PC14"),
-              (727, "PC15"),
-              (729, "PF0", ("PD0", "F103RB"),
-               ("PH0", "F446RE", "L152RE", "L452RE", "F476RG", "F410RB")),
-              (731, "PF1", ("PD1", "F103RB"),
-               ("PH1", "F446RE", "L152RE", "L452RE", "F476RG", "F410RB")),
-              (733, "VBAT", ("VDD", "F070RB"), ("VLCD", "L152RE")),
-              (735, "PC2"),
-              (737, "PC3"),
-              (702, "PC11"),
-              (704, "PD2"),
-              (706, "E5V"),
-              (708, "GND"),
-              (710, "NC3"),
-              (712, "IOREF"),
-              (714, "RESET"),
-              (716, "+3.3V"),
-              (718, "+5V"),
-              (720, "GND"),
-              (722, "GND"),
-              (724, "VIN"),
-              (726, "NC4"),
-              (728, "PA0"),
-              (730, "PA1"),
-              (732, "PA4"),
-              (734, "PB0"),
-              (736, "PC1:PB9"),
-              (738, "PC0:PB8"),
-              (1001, "PC9"),
-              (1003, "PB8"),
-              (1005, "PB9"),
-              (1007, "AVDD"),
-              (1009, "GND"),
-              (1011, "PA5", ("PB13", "F302R8")),
-              (1013, "PA6", ("PB14", "F302R8")),
-              (1015, "PA7", ("PB15", "F302R8")),
-              (1017, "PB6"),
-              (1019, "PC7"),
-              (1021, "PA9"),
-              (1023, "PA8"),
-              (1025, "PB10"),
-              (1027, "PB4"),
-              (1029, "PB5"),
-              (1031, "PB3"),
-              (1033, "PA10"),
-              (1035, "PA2"),
-              (1037, "PA3"),
-
-              (1002, "PC8"),
-              (1004, "PC6"),
-              (1006, "PC5"),
-              (1008, "U5V"),
-              (1010, "NC5"),
-              (1012, "PA12"),
-              (1014, "PA11"),
-              (1016, "PB12"),
-              (1018, "PB11"),
-              (1020, "GND"),
-              (1022, "PB2"),
-              (1024, "PB1"),
-              (1026, "PB15", ("PA7", "F302R8")),
-              (1028, "PB14", ("PA6", "F302R8")),
-              (1030, "PB13", ("PA5", "F302R8")),
-              (1032, "AGND"),
-              (1034, "PC4"),
-              (1036, "NC6", ("PF5", "F030R8")),
-              (1038, "NC7", ("PF4", "F030R8")),
+                (701, "PC10", []),
+                (703, "PC12", []),
+                (705, "VDD", []),
+                (707, "BOOT0", [("PH3:BT0", "L452RE")]),
+                (709, "NC1", [("PF6", "F030R8")]),
+                (711, "NC2", [("PF7", "F030R8")]),
+                (713, "PA13", []),
+                (715, "PA14", []),
+                (717, "PA15", []),
+                (719, "GND", []),
+                (721, "PB7", []),
+                (723, "PC13", []),
+                (725, "PC14", []),
+                (727, "PC15", []),
+                (729, "PF0", [("PD0", "F103RB"),
+                              ("PH0", "F446RE", "L152RE", "L452RE", "F476RG", "F410RB")]),
+                (731, "PF1", [("PD1", "F103RB"),
+                              ("PH1", "F446RE", "L152RE", "L452RE", "F476RG", "F410RB")]),
+                (733, "VBAT", [("VDD", "F070RB"), ("VLCD", "L152RE")]),
+                (735, "PC2", []),
+                (737, "PC3", []),
+                (702, "PC11", []),
+                (704, "PD2", []),
+                (706, "E5V", []),
+                (708, "GND", []),
+                (710, "NC3", []),
+                (712, "IOREF", []),
+                (714, "RESET", []),
+                (716, "+3.3V", []),
+                (718, "+5V", []),
+                (720, "GND", []),
+                (722, "GND", []),
+                (724, "VIN", []),
+                (726, "NC4", []),
+                (728, "PA0", []),
+                (730, "PA1", []),
+                (732, "PA4", []),
+                (734, "PB0", []),
+                (736, "PC1:PB9", []),
+                (738, "PC0:PB8", []),
+                (1001, "PC9", []),
+                (1003, "PB8", []),
+                (1005, "PB9", []),
+                (1007, "AVDD", []),
+                (1009, "GND", []),
+                (1011, "PA5", [("PB13", "F302R8")]),
+                (1013, "PA6", [("PB14", "F302R8")]),
+                (1015, "PA7", [("PB15", "F302R8")]),
+                (1017, "PB6", []),
+                (1019, "PC7", []),
+                (1021, "PA9", []),
+                (1023, "PA8", []),
+                (1025, "PB10", []),
+                (1027, "PB4", []),
+                (1029, "PB5", []),
+                (1031, "PB3", []),
+                (1033, "PA10", []),
+                (1035, "PA2", []),
+                (1037, "PA3", []),
+                (1002, "PC8", []),
+                (1004, "PC6", []),
+                (1006, "PC5", []),
+                (1008, "U5V", []),
+                (1010, "NC5", []),
+                (1012, "PA12", []),
+                (1014, "PA11", []),
+                (1016, "PB12", []),
+                (1018, "PB11", []),
+                (1020, "GND", []),
+                (1022, "PB2", []),
+                (1024, "PB1", []),
+                (1026, "PB15", [("PA7", "F302R8")]),
+                (1028, "PB14", [("PA6", "F302R8")]),
+                (1030, "PB13", [("PA5", "F302R8")]),
+                (1032, "AGND", []),
+                (1034, "PC4", []),
+                (1036, "NC6", [("PF5", "F030R8")]),
+                (1038, "NC7", [("PF4", "F030R8")]),
             ]
 
             # mapped_processor: Dict[str, str] = cpu_mapping[processor]
-            nucleo64_bindings: List[Tuple[int, str]] = []
-            pin_binding: Tuple[int, str]
+            pin_binding: Tuple[int, str, List[Tuple[str, ...]]]
             for pin_binding in pin_bindings:
                 # print(pin_binding)
                 pin_number: int = pin_binding[0]
                 name: str = pin_binding[1]
-                alternate_pin_bindings: Tuple[Tuple[str, str], ...] = pin_binding[2:]
-                alternate_pin_bind: Tuple[str, str]
+                alternate_pin_bindings: List[Tuple[str, ...]] = pin_binding[2]
+                alternate_pin_binding: Tuple[str, ...]
                 for alternate_pin_binding in alternate_pin_bindings:
+                    assert len(alternate_pin_binding) >= 2
                     alternate_name: str = alternate_pin_binding[0]
-                    alternate_processors: Tuple[Tuple[int, str]] = alternate_pin_binding[1:]
-                    alternate_processor: Tuple[int, str]
+                    alternate_processors: Tuple[str, ...] = alternate_pin_binding[1:]
+                    alternate_processor: str
                     for alternate_processor in alternate_processors:
                         # print(alternate_processor)
                         if processor == alternate_processor:
@@ -706,6 +704,8 @@ class KiCube:
 
                 # Force a name selection for pins that can be bridged to alternate pins:
                 if ':' in name:
+                    name1: str
+                    name2: str
                     name1, name2 = name.split(':')
                     if name1 in pin_selects:
                         name = name1
@@ -732,17 +732,17 @@ class KiCube:
 
 
 class SchematicLibrary:
-    """ *SchematicLibrary*: represents a KiCad schematic symbol library
-    """
+    """Represents a KiCad schematic symbol library."""
 
     # SchematicLibrary.__init__():
     def __init__(self, file_name: str) -> None:
-        """ *SchematicLibrary*: Initialize *SchematicLibary* object.
+        """Initialize SchematicLibary object.
 
-        The arguments are:
-        * *library_file_name*: The `.lib` file to open and read in.
+        Args:
+            *library_file_name* (*str*):
+             The `.lib` file to open and read in.
+
         """
-
         # Verify argument types:
         assert file_name.endswith(".lib")
         # print("SchematicLibrary.__init__(*, '{0}')".format(file_name))
@@ -776,6 +776,7 @@ class SchematicLibrary:
 
     # SchematicLibrary.insert():
     def insert(self, schematic_symbol: "SchematicSymbol") -> None:
+        """Insert schematic symbol into a library."""
         assert isinstance(schematic_symbol, SchematicSymbol)
         schematic_library: SchematicLibrary = self
         symbols_table: Dict[str, SchematicSymbol] = schematic_library.symbols_table
@@ -784,6 +785,7 @@ class SchematicLibrary:
 
     # SchematicLibrary.fixup():
     def fixup(self) -> None:
+        """Fixup a schematic library."""
         schematic_library: SchematicLibrary = self
         symbols_table: Dict[str, SchematicSymbol] = schematic_library.symbols_table
         symbol: SchematicSymbol
@@ -792,6 +794,7 @@ class SchematicLibrary:
 
     # SchematicLibrary.lookup() -> SchematicSymbol:
     def lookup(self, part_name) -> "SchematicSymbol":
+        """Lookup a schematic symbol by part name."""
         schematic_library: SchematicLibrary = self
         symbols_table: Dict[str, SchematicSymbol] = schematic_library.symbols_table
         assert part_name in symbols_table
@@ -800,6 +803,7 @@ class SchematicLibrary:
 
     # SchematicLibrary.write():
     def write(self, lib_file_name: str) -> None:
+        """Write a schematic library out to a file."""
         # print("SchematicLibrary.write('{0}')".format(lib_file_name))
 
         # Create a sorted list of *symbols*:
@@ -827,9 +831,11 @@ class SchematicLibrary:
 
 # SchematicSymbol:
 class SchematicSymbol:
+    """Represents a schematic symbol."""
 
     # SchematicSymbol.__init__():
     def __init__(self, lines: List[str]) -> None:
+        """Initialize a SchematicSymbol."""
         first_line: str = lines[0]
         last_line: str = lines[-1]
         assert first_line.startswith("DEF"), "first_line='{0}'".format(first_line)
@@ -848,6 +854,7 @@ class SchematicSymbol:
 
     # SchematicSymbol.fixup():
     def fixup(self) -> None:
+        """Fix up a Sechemtaic symbol."""
         # Insert the "F2 ..." and "F3 ..." lines into *lines*
         symbol: SchematicSymbol = self
         lines: List[str] = symbol.lines
@@ -881,6 +888,7 @@ class SchematicSymbol:
 
     # SchematicSymbol.fixup():
     def write(self, schematic_library_output_file: IO[Any]) -> None:
+        """Write a SechematicySymbol out to an open file."""
         schematic_symbol: SchematicSymbol = self
         schematic_library_output_file.write("#\n")
         schematic_library_output_file.write("# {0}\n".format(schematic_symbol.name))
