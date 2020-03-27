@@ -1,7 +1,7 @@
 # kicube32
 
 *kicube32* is a program that takes output from the STM cube and generates an
-KiCAD schematic symbol.
+a .csv (Comma Separated Value) for input the the `kipart` program.
 
 ## Installation:
 
@@ -9,6 +9,10 @@ For now, please clone this repository to get the code.
 
         cd SOMEWHERE
         git clone https://github.com/waynegramlich/kicube32.git
+	make
+
+The binary is `bin/kicube32`, unless you are using virtual enviroments
+in which case you should be able to just run the program using `kicube32`.
 
 In addition, this program currently useds a program called *kipart* to create
 the KiCAD schematic symbols.  This is installed via:
@@ -37,11 +41,11 @@ Now you can run the program.:
 
         STM32CubeMX
 
-The cube data file ends with a `.ioc` suffix.  
+The cube data file ends with a `.ioc` suffix.
 
 ## Usage
 
-The first step is to start software:
+The first step is to start `STM32CubeMX` software:
 
         ./STM32CubeMX
 
@@ -71,21 +75,17 @@ running on Linux.
 * It required that the generated `.ioc` and `.csv` files be located in the same
   directory and have the same file name (e.g. `f767zi.ioc` and `f767zi.csv`).
 
-* Before running the `kicube32.py` program, it is recommended that you shut down
-  any verions of KiCAD that is running.  KiCAD does not particularly like have
-  files changed out from underneath it and that is exactly `kicube32.py` does.
+* Now run the `kicube32` program:
 
-* Now run the `kicube32.py` program:
-
-        KICUBE32DIR/kicube32/kicube32.py BASENAME.ioc -o KICADLIBDIR/LIB.lib
+        kicube32 IOCFILE.ioc STM32CUBE.csv KIPART.csv
 
   where:
 
-  * KICUBE32DIR is the root directory of the kicube32 repository.
+  * `IOCFILE.ioc` is the `.ioc` file output by STM32CubeMZ
 
-  * BASENAME is the base name of the `.ioc` and associated `.csv` file.
+  * `STMECUBE32.csv` is the `.csv` file that you manually generated using `STM32CubeMX`.
 
-  * KICADLIBDIR is the directory that contains the KiCAD schematic symbol library
+  * `KIPART.csv` is the 
     to use.
 
   * LIB.lib is the name of the KiCAD schematic symbol library file to store

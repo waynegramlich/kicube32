@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+o #!/usr/bin/env python
 
 # <------------------------------------- 100 characters -----------------------------------------> #
 
@@ -6,7 +6,7 @@
 
 # Usage:
 #
-#     kicube32.py -o libary_name.lib ioc_file1.ioc ioc_file2 ...
+#     kicube32 BASE.ioc BASE.csv KIPART.csv
 #
 # The following `sed` command will turn on background highlighting:
 #
@@ -15,91 +15,58 @@
 from typing import Any, Dict, IO, List, Tuple
 
 import os
-import subprocess
+# import subprocess
 import sys
 
 
+# main:
 def main() -> int:
     """Parse arguments a execute program."""
-    output_library_file_name: str = ""
-
     # Parse the command line *arguments*:
+    result: int = 1  # Default to an error return.  Set to 0 only on success.
     arguments: List[str] = sys.argv[1:]
     arguments_size: int = len(arguments)
-    argument_index: int = 0
-    iocs: List[IOC] = []
-    while argument_index < arguments_size:
-        argument: str = arguments[argument_index]
-        if argument.endswith(".ioc"):
-            # Collect file names that end in `.ioc` in *ioc_file_names* list:
-            ioc: IOC = IOC(argument)
-            iocs.append(ioc)
-        elif argument == "-o":
-            # Make sure that on one `-o` option is specified:
-            if len(output_library_file_name) > 0:
-                print("Duplicate -o command specified on command line")
-                return 1
-
-            # Fetch the argument after the `-o`:
-            argument_index += 1
-            if argument_index >= arguments_size:
-                print("No argument after -o on command line")
-                return 1
-
-            argument = arguments[argument_index]
-            if not argument.endswith(".lib"):
-                print("-o {0} does not specify a .lib file".format(argument))
-                return 1
-            output_library_file_name = argument
+    if arguments_size != 3:
+        print(f"Only {arguments_size} arguments provided; 3 are needed.")
+    else:
+        ioc_file_name: str = arguments[0]
+        stm32cube_csv_file_name: str = arguments[1]
+        kipart_csv_file_name: str = arguments[2]
+        if not ioc_file_name.endswith(".ioc"):
+            print(f"First file name '{ioc_file_name}' does not end in '.ioc'.")
+        elif not stm32cube_csv_file_name.endswith(".csv"):
+            print(f"Second file name '{kipart_csv_file_name}' does not end in '.ioc'.")
+        elif not kipart_csv_file_name.endswith(".csv"):
+            print(f"Third file name '{kipart_csv_file_name}' does not end in '.ioc'.")
         else:
-            print("Unrecognized command line argument '{0}'".format(argument))
-            return 1
+            # Read in the *ioc_file_name* extract the values:
+            ioc: IOC = IOC(ioc_file_name)
 
-        # Advance to next argument:
-        argument_index += 1
+            board_name: str = ioc.board_name
+            mcu_name: str = ioc.mcu_name
+            package: str = ioc.package
+            # print("mcu_name='{0}'".format(mcu_name))
+            # print("board_name='{0}".format(board_name))
+            # print("package='{0}".format(package))
+            kicube: KiCube = KiCube(ioc_file_name, stm32cube_csv_file_name,
+                                    mcu_name, board_name, package)
 
-    # Do some additonal command line checking:
-    if len(iocs) == 0:
-        print("No .ioc files specified on command line")
-        return 1
-    if len(output_library_file_name) == 0:
-        print("No -o command specified on command line.")
-        return 1
+            # Verify timestamps:
+            if ioc.timestamp >= kicube.timestamp:
+                print(f"File '{ioc_file_name}' has changed! "
+                      f"Please update file '{stm32cube_csv_file_name}'!!!")
+            else:
+                kicube.kipart_generate(kipart_csv_file_name)
+                result = 0
 
-    # Read in *output_schematic_library*:
-    output_library: SchematicLibrary = SchematicLibrary(output_library_file_name)
-
-    # Process all of the *ioc_file_names*:
-    # print("ioc_file_names=", ioc_file_names)
-    for ioc in iocs:
-        # Read in the `.csv` file associated with *ioc* into *kicube*:
-        base_name: str = ioc.base_name
-        board_name: str = ioc.board_name
-        mcu_name: str = ioc.mcu_name
-        package: str = ioc.package
-        # print("base_name='{0}'".format(base_name))
-        # print("mcu_name='{0}'".format(mcu_name))
-        # print("board_name='{0}".format(board_name))
-        # print("package='{0}".format(package))
-        kicube: KiCube = KiCube(base_name, mcu_name, board_name, package)
-
-        # Verify timestamps:
-        if ioc.timestamp >= kicube.timestamp:
-            print("File '{0}' has changed! Please update file '{1}'!!!".
-                  format(ioc.file_name, kicube.csv_file_name))
-            return 1
-
-        kicube.schematic_generate(output_library)
-
-    # Write out the updated *output_library*:
-    output_library.write(output_library_file_name)
-
-    return 0
+    return result
 
 
+# ChipPin:
 class ChipPin:
     """Represents information about one physical microcontroller pin."""
 
+    # ChipPin.__init__():
     def __init__(self, line: str) -> None:
         """Initialize ChipPin object.
 
@@ -349,9 +316,11 @@ class ChipPin:
         chip_pin.position = position
 
 
+# IOC:
 class IOC:
     """Represents an STM32CubeMX .ioc file."""
 
+    # IOC.__init__():
     def __init__(self, ioc_file_name: str) -> None:
         """Read in and process an ioc file."""
         assert ioc_file_name.endswith(".ioc")
@@ -384,16 +353,15 @@ class IOC:
         self.timestamp: float = timestamp
 
 
+# KiCube:
 class KiCube:
     """KiCube represents data gleaned from an STM32Cube project."""
 
-    def __init__(self, base_name: str, mcu_name: str, board_name: str, package: str) -> None:
+    # Kicube.__init__():
+    def __init__(self, ioc_file_name: str, stm32cube_csv_file_name: str,
+                 mcu_name: str, board_name: str, package: str) -> None:
         """Initialize a KiCube object."""
-        # print("KiCube.__init__(*, '{0}', '{1}', '{2}', '{3}')".
-        #  format(base_name, mcu_name, board_name, package))
-
         kicube: KiCube = self
-        csv_file_name: str = base_name + ".csv"
         cpu_name: str = ""
         footprint: str = ""
         nucleo_bindings: List[Tuple[int, str]] = []
@@ -420,14 +388,14 @@ class KiCube:
         # print("cpu_name='{0}'".format(cpu_name))
         # print("footprint='{0}'".format(footprint))
 
-        # Read in *ioc_txt_file_name*, break it into *lines* and extract the interesting
+        # Read in *stm32cube_csv_file_name*, break it into *lines* and extract the interesting
         # lines into *all__pins*:
         chip_pins: List[ChipPin] = []
-        if not os.path.isfile(csv_file_name):
-            print("File '{0}' does not exist!!!".format(csv_file_name))
+        if not os.path.isfile(stm32cube_csv_file_name):
+            print(f"File '{stm32cube_csv_file_name}' does not exist!!!")
             sys.exit(1)
         csv_file: Any[IO]
-        with open(csv_file_name, "r") as csv_file:
+        with open(stm32cube_csv_file_name, "r") as csv_file:
             lines: List[str] = csv_file.read().splitlines()
             line: str
             for line in lines[1:]:
@@ -437,16 +405,17 @@ class KiCube:
 
         # Stuff *chip_pins* into *cube* (i.e. *self*):
         # kicube: KiCub = self
-        self.base_name: str = base_name
-        self.csv_file_name: str = csv_file_name
+        self.ioc_file_name: str = ioc_file_name
+        self.stm32cube_csv_file_name: str = stm32cube_csv_file_name
         self.chip_pins: List[ChipPin] = chip_pins
         self.cpu_name: str = cpu_name
         self.footprint: str = footprint
         self.nucleo_bindings: List[Tuple[int, str]] = nucleo_bindings
-        self.timestamp: float = os.path.getmtime(csv_file_name)
+        self.timestamp: float = os.path.getmtime(stm32cube_csv_file_name)
         # print("len(kicube.nucleo_bindings)={0}".format(len(kicube.nucleo_bindings)))
 
-    def schematic_generate(self, output_library: "SchematicLibrary") -> None:
+    # KiCube.kipart_genarate():
+    def kipart_generate(self, kipart_csv_file_name: str) -> None:
         """Generate a schematic."""
         kicube: KiCube = self
         chip_pins: List[ChipPin] = kicube.chip_pins
@@ -480,7 +449,9 @@ class KiCube:
         # Sort *nucleo_chip_pins* using the group key:
         nucleo_chip_pins.sort(key=lambda chip_pin: (chip_pin.unit, chip_pin.unit_sort))
 
-        kicad_part_name: str = (kicube.base_name + ';' + kicube.footprint).upper()
+        ioc_file_name: str = kicube.ioc_file_name
+        base_name: str = ioc_file_name[:-4]
+        kicad_part_name: str = (base_name + ';' + kicube.footprint).upper()
         # print("kicad_part_name='{0}'".format(kicad_part_name))
 
         lines: List[str] = []
@@ -498,24 +469,24 @@ class KiCube:
             line: str = line_format.format(position, unit, kicad_type, name, style, side)
             lines.append(line)
 
-        kipart_csv_file_name: str = kicube.base_name + "_kipart.csv"
         kipart_csv_file: IO[Any]
         with open(kipart_csv_file_name, "w") as kipart_csv_file:
             kipart_csv_file.writelines(lines)
 
         # print("calling kipart...")
-        lib_file_name: str = "{0}_{1}.lib".format(kicube.base_name.upper(),
-                                                  kicube.footprint.upper())
-        subprocess.call(
-          ("kipart", kipart_csv_file_name, "--overwrite", "-o", lib_file_name))
+        # lib_file_name: str = "{0}_{1}.lib".format(kicube.base_name.upper(),
+        #                                           kicube.footprint.upper())
+        # subprocess.call(
+        #   ("kipart", kipart_csv_file_name, "--overwrite", "-o", lib_file_name))
         # print("kipart called...")
 
         # Read *lib_file_name* in:
-        schematic_library: SchematicLibrary = SchematicLibrary(lib_file_name)
-        cpu_symbol = schematic_library.lookup(kicad_part_name)
-        cpu_symbol.fixup()
-        output_library.insert(cpu_symbol)
+        # schematic_library: SchematicLibrary = SchematicLibrary(lib_file_name)
+        # cpu_symbol = schematic_library.lookup(kicad_part_name)
+        # cpu_symbol.fixup()
+        # output_library.insert(cpu_symbol)
 
+    # KiCube.nucleo144_bindings_generate():
     def nucleo144_bindings_generate(self, processor: str) -> List[Tuple[int, str]]:
         """Return list of Nucleo-144 pin bindings."""
         nucleo144_mcus: List[str] = [
@@ -574,6 +545,7 @@ class KiCube:
 
         return nucleo144_bindings
 
+    # KiCube.nucleo64_bindings_generate():
     def nucleo64_bindings_generate(self, processor: str, pin_selects) -> List[Tuple[int, str]]:
         """Return the Nucleo64 pin bindings for a proceesor."""
         assert isinstance(processor, str)
@@ -731,6 +703,7 @@ class KiCube:
         return nucleo64_bindings
 
 
+# SchematicLibaray:
 class SchematicLibrary:
     """Represents a KiCad schematic symbol library."""
 
@@ -792,7 +765,7 @@ class SchematicLibrary:
         for symbol in symbols_table.values():
             symbol.fixup()
 
-    # SchematicLibrary.lookup() -> SchematicSymbol:
+    # SchematicLibrary.lookup():
     def lookup(self, part_name) -> "SchematicSymbol":
         """Lookup a schematic symbol by part name."""
         schematic_library: SchematicLibrary = self
@@ -886,7 +859,7 @@ class SchematicSymbol:
                 # print("'{0}' => '{1}'".format(initial_line, line))
                 lines[line_index] = line
 
-    # SchematicSymbol.fixup():
+    # SchematicSymbol.write():
     def write(self, schematic_library_output_file: IO[Any]) -> None:
         """Write a SechematicySymbol out to an open file."""
         schematic_symbol: SchematicSymbol = self
