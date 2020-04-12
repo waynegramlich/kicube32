@@ -20,7 +20,7 @@ the KiCAD schematic symbols.  This is installed via:
         easy_install kipart
         pip install kipart
 
-
+<!--
 The `STM32CubeMX` program is typically downloaded from:
 
         https://www.st.com/en/development-tools/stm32cubemx.html
@@ -40,6 +40,8 @@ figure out how to ensure that you have the correct version of Java installed.
 Now you can run the program.:
 
         STM32CubeMX
+
+-->
 
 The cube data file ends with a `.ioc` suffix.
 
