@@ -1,4 +1,4 @@
-o #!/usr/bin/env python
+#!/usr/bin/env python
 
 # <------------------------------------- 100 characters -----------------------------------------> #
 
@@ -27,7 +27,7 @@ def main() -> int:
     arguments: List[str] = sys.argv[1:]
     arguments_size: int = len(arguments)
     if arguments_size != 3:
-        print(f"Only {arguments_size} arguments provided; 3 are needed.")
+        print("Usage: kicube32 CUB_IOC_FILE CUBE_CSV_FILE KIPART_CSV_FILE # input input output")
     else:
         ioc_file_name: str = arguments[0]
         stm32cube_csv_file_name: str = arguments[1]
@@ -37,7 +37,7 @@ def main() -> int:
         elif not stm32cube_csv_file_name.endswith(".csv"):
             print(f"Second file name '{kipart_csv_file_name}' does not end in '.ioc'.")
         elif not kipart_csv_file_name.endswith(".csv"):
-            print(f"Third file name '{kipart_csv_file_name}' does not end in '.ioc'.")
+            print(f"Third file name '{kipart_csv_file_name}' does not end in '.csv'.")
         else:
             # Read in the *ioc_file_name* extract the values:
             ioc: IOC = IOC(ioc_file_name)
