@@ -1,21 +1,39 @@
-#!/usr/bin/env python
-
-# <------------------------------------- 100 characters -----------------------------------------> #
-
-"""kicube32: A program for generating KiCad schematic symbols for STM32 processors."""
-
-# Usage:
+# This file is licensed using the "MIT License" below:
 #
-#     kicube32 BASE.ioc BASE.csv KIPART.csv
+# ##################################################################################################
 #
-# The following `sed` command will turn on background highlighting:
+# MIT License
 #
-#     sed -i -E 's/S (.*) N/S \1 f N/' cube.lib
+# Copyright 2019-2020 Home Brew Robotics Club
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to the following
+# conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies
+# or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+# OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+#
+# ##################################################################################################
+# <======================================= 100 characters =======================================> #
+
+"""kicube32: A program for generating KiCad schematic symbols for STM32 processors.
+
+Usage: kicube32 BASE.ioc BASE.csv KIPART.csv # input input output
+"""
 
 from typing import Any, Dict, IO, List, Tuple
 
 import os
-# import subprocess
 import sys
 
 
@@ -27,7 +45,7 @@ def main() -> int:
     arguments: List[str] = sys.argv[1:]
     arguments_size: int = len(arguments)
     if arguments_size != 3:
-        print("Usage: kicube32 CUB_IOC_FILE CUBE_CSV_FILE KIPART_CSV_FILE # input input output")
+        print("Usage: kicube32 CUBE_IOC_FILE CUBE_CSV_FILE KIPART_CSV_FILE # input input output")
     else:
         ioc_file_name: str = arguments[0]
         stm32cube_csv_file_name: str = arguments[1]
@@ -448,15 +466,24 @@ class KiCube:
 
         # Sort *nucleo_chip_pins* using the group key:
         nucleo_chip_pins.sort(key=lambda chip_pin: (chip_pin.unit, chip_pin.unit_sort))
-
         ioc_file_name: str = kicube.ioc_file_name
-        base_name: str = ioc_file_name[:-4]
-        kicad_part_name: str = (base_name + ';' + kicube.footprint).upper()
+        base_name: str = ioc_file_name[:-4].upper()
+        foot_print: str = kicube.footprint.upper()
         # print("kicad_part_name='{0}'".format(kicad_part_name))
 
+        # Construct the file as a list of *lines*.
         lines: List[str] = []
-        lines.append("{0}\n".format(kicad_part_name))
-        line_format = '"{0}", "{1}", "{2}", "{3}", "{4}", "{5}"\n'
+        line_format: str = '"{0}", "{1}", "{2}", "{3}", "{4}", "{5}"\n'
+
+        # Output the first line which is a comma separated list of values:
+        #     SYMBOL_NAME,REF_PREFIX,FOOTPRINT,DATA_SHEET_URL,SHORT_DESCRIPTION;LONG_DESCRIPTION
+        symbol_name: str = f"{base_name};{foot_print}"
+        data_sheet_url: str = ("https://www.st.com/resource/en/user_manual/" +
+                               "dm00244518-stm32-nucleo144-boards-stmicroelectronics.pdf")
+        manufacturer_number: str = f"{foot_print}-{base_name}"
+        description: str = f"NUCLEO144-{base_name};Nucleo144 STM32{base_name}"
+        lines.append(line_format.format(symbol_name, "CN", foot_print, data_sheet_url,
+                                        manufacturer_number, description))
         lines.append(line_format.format("Pin", "Unit", "Type", "Name", "Style", "Side"))
 
         for nucleo_chip_pin in nucleo_chip_pins:
@@ -468,6 +495,10 @@ class KiCube:
             side: str = nucleo_chip_pin.side
             line: str = line_format.format(position, unit, kicad_type, name, style, side)
             lines.append(line)
+
+        # Terminate the file with ",,,,,," and a blank line:
+        lines.append(",,,,,,\n")
+        lines.append("\n")
 
         kipart_csv_file: IO[Any]
         with open(kipart_csv_file_name, "w") as kipart_csv_file:

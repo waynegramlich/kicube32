@@ -1,3 +1,5 @@
+####################################################################################################
+#
 # MIT License
 #
 # Copyright (c) 2019 Wayne C. Gramlich
@@ -19,8 +21,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+#
+####################################################################################################
 # <======================================= 100 characters =======================================> #
+
 import os
 import setuptools  # type: ignore
 from typing import Any, Dict, IO
@@ -45,6 +49,7 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "kicube32=kicube32.kicube32:main",
+            "kidocgen=kidocgen.kidocgen:main",
         ],
     },
     include_package_data=True,
@@ -55,6 +60,7 @@ setuptools.setup(
     name=("kicube32"),
     packages=[
         "kicube32",
+        "kidocgen",
     ],
     python_requires=">=3.6",
     url="https://github.com/waynegramlich/kicube32",
