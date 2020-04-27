@@ -94,15 +94,15 @@ def main():
                     lines.append(f"F {data_sheet}")
                     lines.append("$ENDCMP")
 
-        # Put the trailing lines in place:
-        lines.append("#")
-        lines.append("#End Doc Library")
-        lines.append("")
+    # Put the trailing lines in place:
+    lines.append("#")
+    lines.append("#End Doc Library")
+    lines.append("")
 
-        # Write *lines* out to *dcm_path*:
-        master_board_dcm_text: str = '\n'.join(lines)
-        with open(dcm_path, "w") as master_board_dcm_file:
-            master_board_dcm_file.write(master_board_dcm_text)
+    # Write *lines* out to *dcm_path*:
+    master_board_dcm_text: str = '\n'.join(lines)
+    with open(dcm_path, "w") as master_board_dcm_file:
+        master_board_dcm_file.write(master_board_dcm_text)
 
     # Return with an error code (0 => OK, 1 => Not OK):
     return error_code
