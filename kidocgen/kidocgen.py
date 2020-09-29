@@ -71,7 +71,7 @@ def main():
         # Sweep through all of the `*.kipart.csv` files in *csv_directory*:
         kipart_csv: Path
         for kipart_csv in csvs_directory.glob("*.kipart.csv"):
-            print(f"file:{kipart_csv}")
+            # print(f"file:{kipart_csv}")
             with open(kipart_csv) as kipart_csv_file:
                 # Parse the header line:
                 kipart_csv_text: str = kipart_csv_file.read()

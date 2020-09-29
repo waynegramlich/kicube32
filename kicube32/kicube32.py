@@ -173,6 +173,8 @@ class ChipPin:
             if signal == "":
                 # Unused:
                 kicad_type = "no_connect"
+            elif signal.startswith("ADC"):
+                kicad_type = "passive"
             elif signal.startswith("ETH_"):
                 kicad_type = "bidirectional"
                 name += "({0})".format(signal)
@@ -224,6 +226,11 @@ class ChipPin:
                 else:
                     print("Unrecognized I2C signal: '{0}'".format(signal))
                 name += "({0})".format(signal)
+            elif signal.startswith("LPTIM"):
+                if signal.endswith("_IN1") or signal.endswith("_IN2"):
+                    kicad_type = "input"
+                else:
+                    print("Unrecognized I2C signals: '{0}'".format(signal))
             elif signal.startswith("RCC_"):
                 if signal.endswith("_IN"):
                     kicad_type = "passive"
@@ -233,6 +240,18 @@ class ChipPin:
                     print("Unrecognized RCC signal: '{0}'".format(signal))
                 name += "({0})*".format(signal[4:])
                 asterisk_appended = True
+            elif signal.startswith("SPI"):
+                # Have SPI device:
+                if signal.endswith("_MISO"):
+                    kicad_type = "input"
+                elif signal.endswith("_MOSI"):
+                    kicad_type = "output"
+                elif signal.endswith("_NSS"):
+                    kicad_type = "output"
+                elif signal.endswith("_SCK"):
+                    kicad_type = "output"
+                else:
+                    print("Unrecognized SPI signal: '{0}'".format(signal))
             elif signal.startswith("SYS_"):
                 kicad_type = "bidirectional"
                 name += "({0})*".format(signal[4:])
@@ -423,6 +442,7 @@ class KiCube:
 
         # Stuff *chip_pins* into *cube* (i.e. *self*):
         # kicube: KiCub = self
+        self.board_name: str = board_name
         self.ioc_file_name: str = ioc_file_name
         self.stm32cube_csv_file_name: str = stm32cube_csv_file_name
         self.chip_pins: List[ChipPin] = chip_pins
@@ -435,7 +455,9 @@ class KiCube:
     # KiCube.kipart_genarate():
     def kipart_generate(self, kipart_csv_file_name: str) -> None:
         """Generate a schematic."""
+        # Grab some values from *kicube* (i.e. *self*):
         kicube: KiCube = self
+        board_name: str = kicube.board_name.upper()
         chip_pins: List[ChipPin] = kicube.chip_pins
         nucleo_bindings: List[Tuple[int, str]] = kicube.nucleo_bindings
 
@@ -477,13 +499,14 @@ class KiCube:
 
         # Output the first line which is a comma separated list of values:
         #     SYMBOL_NAME,REF_PREFIX,FOOTPRINT,DATA_SHEET_URL,SHORT_DESCRIPTION;LONG_DESCRIPTION
-        symbol_name: str = f"{base_name};{foot_print}"
+        symbol_name: str = f"{board_name};2xF2x35"
         data_sheet_url: str = ("https://www.st.com/resource/en/user_manual/" +
                                "dm00244518-stm32-nucleo144-boards-stmicroelectronics.pdf")
         manufacturer_number: str = f"{foot_print}-{base_name}"
+        footprint: str = f"HR2:{board_name.replace('-', '_')}_2xF2x35"
         description: str = f"NUCLEO144-{base_name};Nucleo144 STM32{base_name}"
-        lines.append(line_format.format(symbol_name, "CN", foot_print, data_sheet_url,
-                                        manufacturer_number, description))
+        lines.append(line_format.format(
+            symbol_name, "CN", footprint, data_sheet_url, manufacturer_number, description))
         lines.append(line_format.format("Pin", "Unit", "Type", "Name", "Style", "Side"))
 
         for nucleo_chip_pin in nucleo_chip_pins:
