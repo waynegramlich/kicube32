@@ -31,7 +31,7 @@
 Usage: kicube32 BASE.ioc BASE.csv KIPART.csv # input input output
 """
 
-from typing import Any, Dict, IO, List, Tuple
+from typing import Any, Dict, IO, List, Text, Tuple
 
 import os
 import sys
@@ -41,6 +41,7 @@ import sys
 def main() -> int:
     """Parse arguments a execute program."""
     # Parse the command line *arguments*:
+    tracing: Text = ""  # "    "
     result: int = 1  # Default to an error return.  Set to 0 only on success.
     arguments: List[str] = sys.argv[1:]
     arguments_size: int = len(arguments)
@@ -53,12 +54,12 @@ def main() -> int:
         if not ioc_file_name.endswith(".ioc"):
             print(f"First file name '{ioc_file_name}' does not end in '.ioc'.")
         elif not stm32cube_csv_file_name.endswith(".csv"):
-            print(f"Second file name '{kipart_csv_file_name}' does not end in '.ioc'.")
+            print(f"Second file name '{kipart_csv_file_name}' does not end in '.csv'.")
         elif not kipart_csv_file_name.endswith(".csv"):
             print(f"Third file name '{kipart_csv_file_name}' does not end in '.csv'.")
         else:
             # Read in the *ioc_file_name* extract the values:
-            ioc: IOC = IOC(ioc_file_name)
+            ioc: IOC = IOC(ioc_file_name, tracing=tracing)
 
             board_name: str = ioc.board_name
             mcu_name: str = ioc.mcu_name
@@ -67,14 +68,14 @@ def main() -> int:
             # print("board_name='{0}".format(board_name))
             # print("package='{0}".format(package))
             kicube: KiCube = KiCube(ioc_file_name, stm32cube_csv_file_name,
-                                    mcu_name, board_name, package)
+                                    mcu_name, board_name, package, tracing=tracing)
 
             # Verify timestamps:
             if ioc.timestamp >= kicube.timestamp:
                 print(f"File '{ioc_file_name}' has changed! "
                       f"Please update file '{stm32cube_csv_file_name}'!!!")
             else:
-                kicube.kipart_generate(kipart_csv_file_name)
+                kicube.kipart_generate(kipart_csv_file_name, tracing=tracing)
                 result = 0
 
     return result
@@ -85,7 +86,7 @@ class ChipPin:
     """Represents information about one physical microcontroller pin."""
 
     # ChipPin.__init__():
-    def __init__(self, line: str) -> None:
+    def __init__(self, line: str, tracing: Text = "") -> None:
         """Initialize ChipPin object.
 
         The arguments are:
@@ -160,7 +161,7 @@ class ChipPin:
                                             trimmed_name[2:].isdigit())):
                 # We have a port name:
                 unit = trimmed_name[:2]
-                unit_sort = tuple(trimmed_name[2:])  # int(trimmed_name[2:])
+                unit_sort = ("", int(trimmed_name[2:]))  # int(trimmed_name[2:])
             else:
                 unit = "?"
                 unit_sort = tuple("")
@@ -225,12 +226,13 @@ class ChipPin:
                     kicad_type = "bidirectional"
                 else:
                     print("Unrecognized I2C signal: '{0}'".format(signal))
-                name += "({0})".format(signal)
+                name += f"({label})"
             elif signal.startswith("LPTIM"):
                 if signal.endswith("_IN1") or signal.endswith("_IN2"):
                     kicad_type = "input"
                 else:
                     print("Unrecognized I2C signals: '{0}'".format(signal))
+                name += f"({label})"
             elif signal.startswith("RCC_"):
                 if signal.endswith("_IN"):
                     kicad_type = "passive"
@@ -241,6 +243,8 @@ class ChipPin:
                 name += "({0})*".format(signal[4:])
                 asterisk_appended = True
             elif signal.startswith("SPI"):
+                if tracing:
+                    print(f"{tracing}Found signal '{signal}'")
                 # Have SPI device:
                 if signal.endswith("_MISO"):
                     kicad_type = "input"
@@ -252,6 +256,7 @@ class ChipPin:
                     kicad_type = "output"
                 else:
                     print("Unrecognized SPI signal: '{0}'".format(signal))
+                name += f"({label})"
             elif signal.startswith("SYS_"):
                 kicad_type = "bidirectional"
                 name += "({0})*".format(signal[4:])
@@ -259,7 +264,7 @@ class ChipPin:
                 # print("name='{0}'".format(name))
             elif signal.startswith("TIM"):
                 kicad_type = "output"
-                name += "({0})".format(signal)
+                name += f"({label})"
             elif signal.startswith("UART") or signal.startswith("USART"):
                 # print("UART signal='{0}'".format(signal))
                 if signal.endswith("_RX"):
@@ -345,7 +350,7 @@ class ChipPin:
         kind: str = chip_pin.kind
         signal: str = chip_pin.signal
         label: str = chip_pin.label
-        return "{0:4} {1:6} {2:15} {3:20} {4}".format(position, name, kind, signal, label)
+        return "{0:4} {1:25} {2:15} {3:20} {4}".format(position, name, kind, signal, label)
 
     def position_set(self, position: str) -> None:
         """Set the ChipPin position."""
@@ -358,8 +363,10 @@ class IOC:
     """Represents an STM32CubeMX .ioc file."""
 
     # IOC.__init__():
-    def __init__(self, ioc_file_name: str) -> None:
+    def __init__(self, ioc_file_name: str, tracing: Text = "") -> None:
         """Read in and process an ioc file."""
+        if tracing:
+            print(f"{tracing}=>IOC.__init__({ioc_file_name})")
         assert ioc_file_name.endswith(".ioc")
         base_name: str = ioc_file_name[:-4]
         timestamp: float = os.path.getmtime(ioc_file_name)
@@ -389,6 +396,9 @@ class IOC:
         self.package: str = package
         self.timestamp: float = timestamp
 
+        if tracing:
+            print(f"{tracing}<=IOC.__init__({ioc_file_name})")
+
 
 # KiCube:
 class KiCube:
@@ -396,8 +406,11 @@ class KiCube:
 
     # Kicube.__init__():
     def __init__(self, ioc_file_name: str, stm32cube_csv_file_name: str,
-                 mcu_name: str, board_name: str, package: str) -> None:
+                 mcu_name: str, board_name: str, package: str, tracing: Text = "") -> None:
         """Initialize a KiCube object."""
+        if tracing:
+            print(f"{tracing}=>Kicube.__init('{ioc_file_name}', '{stm32cube_csv_file_name}'"
+                  f"'{mcu_name}', '{board_name}', '{package}')")
         kicube: KiCube = self
         cpu_name: str = ""
         footprint: str = ""
@@ -434,11 +447,16 @@ class KiCube:
         csv_file: Any[IO]
         with open(stm32cube_csv_file_name, "r") as csv_file:
             lines: List[str] = csv_file.read().splitlines()
+            index: int
             line: str
-            for line in lines[1:]:
-                chip_pin: ChipPin = ChipPin(line)
+            for index, line in enumerate(lines[1:]):
+                chip_pin: ChipPin = ChipPin(line, tracing=tracing)
+                if tracing:
+                    print(f"{tracing}{chip_pin}")
                 chip_pins.append(chip_pin)
                 # print("{0}".format(chip_pin))
+        if tracing:
+            print(f"{tracing}{len(chip_pins)} ChipPin's read from '{stm32cube_csv_file_name}'")
 
         # Stuff *chip_pins* into *cube* (i.e. *self*):
         # kicube: KiCub = self
@@ -451,10 +469,15 @@ class KiCube:
         self.nucleo_bindings: List[Tuple[int, str]] = nucleo_bindings
         self.timestamp: float = os.path.getmtime(stm32cube_csv_file_name)
         # print("len(kicube.nucleo_bindings)={0}".format(len(kicube.nucleo_bindings)))
+        if tracing:
+            print(f"{tracing}<=Kicube.__init('{ioc_file_name}', '{stm32cube_csv_file_name}'"
+                  f"'{mcu_name}', '{board_name}', '{package}')")
 
     # KiCube.kipart_genarate():
-    def kipart_generate(self, kipart_csv_file_name: str) -> None:
-        """Generate a schematic."""
+    def kipart_generate(self, kipart_csv_file_name: str, tracing: Text = "") -> None:
+        """Generate a KiPart .csv file."""
+        if tracing:
+            print(f"{tracing}=>KiCube.kipart_generate(*, '{kipart_csv_file_name})'")
         # Grab some values from *kicube* (i.e. *self*):
         kicube: KiCube = self
         board_name: str = kicube.board_name.upper()
@@ -484,14 +507,14 @@ class KiCube:
             else:
                 print("Need to deal with nucleo_pin: '{0}'".format(name))
             nucleo_chip_pins.append(chip_pin)
-        # print("len(nucleo_chip_pins)={0}".format(len(nucleo_chip_pins)))
+        if tracing:
+            print(f"{tracing}{len(nucleo_chip_pins)} nucleo_chip_pins")
 
         # Sort *nucleo_chip_pins* using the group key:
         nucleo_chip_pins.sort(key=lambda chip_pin: (chip_pin.unit, chip_pin.unit_sort))
         ioc_file_name: str = kicube.ioc_file_name
         base_name: str = ioc_file_name[:-4].upper()
         foot_print: str = kicube.footprint.upper()
-        # print("kicad_part_name='{0}'".format(kicad_part_name))
 
         # Construct the file as a list of *lines*.
         lines: List[str] = []
@@ -499,12 +522,16 @@ class KiCube:
 
         # Output the first line which is a comma separated list of values:
         #     SYMBOL_NAME,REF_PREFIX,FOOTPRINT,DATA_SHEET_URL,SHORT_DESCRIPTION;LONG_DESCRIPTION
+        if tracing:
+            print(f"{tracing}Generate kipart header line")
         symbol_name: str = f"{board_name};2xF2x35"
         data_sheet_url: str = ("https://www.st.com/resource/en/user_manual/" +
                                "dm00244518-stm32-nucleo144-boards-stmicroelectronics.pdf")
         manufacturer_number: str = f"{foot_print}-{base_name}"
         footprint: str = f"HR2:{board_name.replace('-', '_')}_2xF2x35"
         description: str = f"NUCLEO144-{base_name};Nucleo144 STM32{base_name}"
+        if tracing:
+            print(f"{tracing}Generate headings line")
         lines.append(line_format.format(
             symbol_name, "CN", footprint, data_sheet_url, manufacturer_number, description))
         lines.append(line_format.format("Pin", "Unit", "Type", "Name", "Style", "Side"))
@@ -526,6 +553,8 @@ class KiCube:
         kipart_csv_file: IO[Any]
         with open(kipart_csv_file_name, "w") as kipart_csv_file:
             kipart_csv_file.writelines(lines)
+        if tracing:
+            print(f"{tracing}<=KiCube.kipart_generate(*, '{kipart_csv_file_name})'")
 
         # print("calling kipart...")
         # lib_file_name: str = "{0}_{1}.lib".format(kicube.base_name.upper(),
@@ -743,7 +772,7 @@ class KiCube:
                 # Add the binding to *nucleo64_bindings*:
                 nucleo64_bindings.append((pin_number, name))
 
-            # Sort the result:
+            # Sort the result:()
             nucleo64_bindings.sort(key=lambda binding: binding[0])
 
             debug = False
